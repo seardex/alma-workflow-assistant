@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0284c7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0369a1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Rect -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#grad)" filter="drop-shadow(0px 6px 12px rgba(0,0,0,0.15))"/>
+  
+  <!-- Book / Page Silhouette -->
+  <path d="M32 36 C32 33 34 31 37 31 L85 31 C91.6 31 97 36.4 97 43 L97 91 C97 94 95 96 92 96 L44 96 C37.4 96 32 90.6 32 84 Z" fill="#ffffff" fill-opacity="0.2"/>
+  <rect x="36" y="38" width="56" height="52" rx="6" fill="#ffffff" />
+  
+  <!-- Lightning Bolt (Automation Symbol) -->
+  <polygon points="68,26 44,66 62,66 58,102 84,58 66,58" fill="#f59e0b" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+</svg>

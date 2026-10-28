@@ -1,0 +1,252 @@
+/* Alma Workflow Assistant Floating HUD Styles */
+#alma-assistant-hud {
+  all: initial;
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 2147483640;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+#alma-assistant-hud * {
+  box-sizing: border-box;
+}
+
+.alma-hud-container {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  width: 320px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.alma-hud-container.collapsed .alma-hud-body {
+  display: none;
+}
+
+.alma-hud-header {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move;
+  user-select: none;
+}
+
+.alma-hud-title {
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.alma-hud-title-badge {
+  background: rgba(255, 255, 255, 0.22);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.alma-hud-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alma-hud-btn-icon {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.alma-hud-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.alma-hud-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alma-hud-page-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.alma-hud-status-badge {
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.status-editor {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-list {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-search {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-idle {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.alma-hud-action-btn {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.alma-hud-action-btn:hover {
+  background: #0369a1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.alma-hud-action-btn:active {
+  transform: translateY(1px);
+}
+
+.alma-hud-action-btn.btn-save {
+  background: #16a34a;
+}
+.alma-hud-action-btn.btn-save:hover {
+  background: #15803d;
+}
+
+.alma-hud-action-btn.btn-secondary {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+.alma-hud-action-btn.btn-secondary:hover {
+  background: #f1f5f9;
+}
+
+.alma-hud-info-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 9px 10px;
+  font-size: 11.5px;
+  color: #475569;
+}
+
+.alma-hud-log-box {
+  max-height: 90px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  line-height: 1.45;
+}
+
+.alma-hud-log-line {
+  margin-bottom: 3px;
+}
+.alma-hud-log-line.success { color: #4ade80; }
+.alma-hud-log-line.warn { color: #fbbf24; }
+.alma-hud-log-line.error { color: #f87171; }
+.alma-hud-log-line.info { color: #38bdf8; }
+
+.alma-hud-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #475569;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+}
+
+/* Switch styling */
+.alma-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 19px;
+}
+
+.alma-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.alma-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: .2s;
+  border-radius: 19px;
+}
+
+.alma-slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.alma-switch input:checked + .alma-slider {
+  background-color: #0284c7;
+}
+
+.alma-switch input:checked + .alma-slider:before {
+  transform: translateX(15px);
+}

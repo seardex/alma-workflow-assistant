@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Alma Workflow Assistant",
+  "version": "1.0.0",
+  "description": "Automates routine exemplar editing, signature transfers, and note inspections in Ex Libris Alma.",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.exlibrisgroup.com/*",
+    "*://*.hosted.exlibrisgroup.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Alma Workflow Assistant",
+    "default_icon": {
+      "48": "icons/icon-48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.exlibrisgroup.com/*",
+        "*://*.hosted.exlibrisgroup.com/*"
+      ],
+      "css": [
+        "content/ui-panel.css"
+      ],
+      "js": [
+        "config/default-config.js",
+        "utils/logger.js",
+        "utils/dom-utils.js",
+        "content/dom-selectors.js",
+        "content/editor-handler.js",
+        "content/navigation-handler.js",
+        "content/ui-panel.js",
+        "content/alma-core.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "alma-assistant@workflow.local",
+      "strict_min_version": "109.0"
+    }
+  }
+}

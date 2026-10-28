@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alma Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <div class="header-branding">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1 class="header-title">Alma Assistant</h1>
+          <span class="header-subtitle">Exemplar-Workflow Automatisierung</span>
+        </div>
+      </div>
+      <span class="version-badge">v1.0</span>
+    </header>
+
+    <section class="section-actions">
+      <h2 class="section-title">Schnellaktionen</h2>
+      <button id="btn-process-item" class="action-btn primary-btn">
+        <span class="btn-icon">⚡</span>
+        <span>Exemplar bearbeiten</span>
+        <kbd class="shortcut-tag">Alt + X</kbd>
+      </button>
+
+      <button id="btn-save-item" class="action-btn save-btn">
+        <span class="btn-icon">💾</span>
+        <span>Speichern & Schließen</span>
+        <kbd class="shortcut-tag">Alt + S</kbd>
+      </button>
+
+      <button id="btn-open-highlighted" class="action-btn secondary-btn">
+        <span class="btn-icon">✏️</span>
+        <span>Markiertes Exemplar öffnen</span>
+        <kbd class="shortcut-tag">Alt + E</kbd>
+      </button>
+    </section>
+
+    <section class="section-settings">
+      <h2 class="section-title">Einstellungen & Regeln</h2>
+      
+      <div class="form-group">
+        <label for="cfg-date-retro" class="form-label">Datum wenn "Retro" gefunden:</label>
+        <input type="text" id="cfg-date-retro" class="form-input" value="31.12.1984" placeholder="31.12.1984">
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-date-no-retro" class="form-label">Datum wenn kein "Retro" vorhanden:</label>
+        <input type="text" id="cfg-date-no-retro" class="form-input" value="11/11/1999" placeholder="11/11/1999">
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-keyword" class="form-label">Suchbegriff in Notizen:</label>
+        <input type="text" id="cfg-keyword" class="form-input" value="retro" placeholder="retro">
+      </div>
+
+      <div class="checkbox-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="cfg-manual-save" checked>
+          <span class="checkbox-custom"></span>
+          <span><b>Sicherheits-Stopp:</b> Erst nach manueller Prüfung speichern</span>
+        </label>
+      </div>
+
+      <div class="checkbox-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="cfg-show-hud" checked>
+          <span class="checkbox-custom"></span>
+          <span>Schwebendes Alma-Toolbar-Widget (HUD) im Browser anzeigen</span>
+        </label>
+      </div>
+
+      <button id="btn-save-settings" class="save-settings-btn">Einstellungen speichern</button>
+      <div id="save-status" class="save-status"></div>
+    </section>
+
+    <footer class="popup-footer">
+      <span>Bereit für Firefox & Edge</span>
+      <a href="#" id="link-shortcuts" class="help-link">Tastenkürzel</a>
+    </footer>
+  </div>
+
+  <script src="../config/default-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
