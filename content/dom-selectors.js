@@ -30,25 +30,130 @@ class AlmaSelectors {
    * Find tab buttons (Allgemein = Alt+1, Notizen = Alt+3)
    */
   static findTab(tabName) {
+    if (/Notizen/i.test(tabName)) {
+      return this.getNotizenTab();
+    }
+    if (/Allgemein/i.test(tabName)) {
+      return this.getAllgemeinTab();
+    }
+
     const regex = new RegExp(`^\\s*${tabName}\\b`, 'i');
-    
-    // Look for tab elements, buttons, links
     const candidates = Array.from(document.querySelectorAll(
-      'button, a, [role="tab"], .tab, .nav-link, span'
+      'button, a, [role="tab"], .tab, .nav-link, span, li'
     ));
 
-    return candidates.find(el => {
-      const text = (el.textContent || '').trim();
+    const matched = candidates.find(el => {
+      const text = (el.textContent || el.getAttribute('aria-label') || '').trim();
       return regex.test(text) && text.length < 35;
     });
+
+    if (!matched) return null;
+    return matched.closest('button, a, [role="tab"], li') || matched;
   }
 
-  static getAllgemeinTab() {
-    return this.findTab('Allgemein');
-  }
-
+  /**
+   * Exact Alma trigger for Notizen tab
+   */
   static getNotizenTab() {
-    return this.findTab('Notizen');
+    return document.getElementById('cresource_editornotes') ||
+           document.querySelector('#cresource_editornotes_span input[type="submit"]') ||
+           document.getElementById('cresource_editornotes_span') ||
+           document.getElementById('A_NAV_LINK_cresource_editornotes_span');
+  }
+
+  /**
+   * Exact Alma trigger for Allgemein tab
+   */
+  static getAllgemeinTab() {
+    return document.getElementById('cresource_editorgeneral') ||
+           document.querySelector('#cresource_editorgeneral_span input[type="submit"]') ||
+           document.getElementById('cresource_editorgeneral_span') ||
+           document.getElementById('A_NAV_LINK_cresource_editorgeneral_span');
+  }
+
+  /**
+   * Unambiguously identifies the active tab inside the Physical Item Editor
+   */
+  static detectCurrentEditorTab() {
+    // 1. Page URL input indicator (highest reliability in Alma forms)
+    const currentUrlInput = document.querySelector('input[name="pageBean.currentUrl"]');
+    if (currentUrlInput && currentUrlInput.value) {
+      if (currentUrlInput.value.includes('item_notes.xml')) return 'NOTIZEN';
+      if (currentUrlInput.value.includes('item_general.xml')) return 'ALLGEMEIN';
+    }
+
+    // 2. Active tab indicator in Alma header
+    const tabSpanNotes = document.getElementById('cresource_editornotes_span');
+    if (tabSpanNotes && (tabSpanNotes.classList.contains('active') || tabSpanNotes.classList.contains('tabSelected') || tabSpanNotes.classList.contains('selected'))) {
+      return 'NOTIZEN';
+    }
+    const tabSpanGeneral = document.getElementById('cresource_editorgeneral_span');
+    if (tabSpanGeneral && (tabSpanGeneral.classList.contains('active') || tabSpanGeneral.classList.contains('tabSelected') || tabSpanGeneral.classList.contains('selected'))) {
+      return 'ALLGEMEIN';
+    }
+
+    // 3. Tab navigation links with aria-selected
+    const linkNotes = document.getElementById('A_NAV_LINK_cresource_editornotes_span');
+    if (linkNotes && (linkNotes.getAttribute('aria-selected') === 'true' || linkNotes.classList.contains('active') || linkNotes.classList.contains('selected'))) {
+      return 'NOTIZEN';
+    }
+    const linkGeneral = document.getElementById('A_NAV_LINK_cresource_editorgeneral_span');
+    if (linkGeneral && (linkGeneral.getAttribute('aria-selected') === 'true' || linkGeneral.classList.contains('active') || linkGeneral.classList.contains('selected'))) {
+      return 'ALLGEMEIN';
+    }
+
+    // 4. Form fields check: If Allgemein fields (Inventarnummer/Signatur) are present, it is Allgemein
+    if (this.isAllgemeinTabReady()) {
+      return 'ALLGEMEIN';
+    }
+
+    // 5. Note fields check
+    if (document.getElementById('pageBeanitemMddnxphysicalItemTableinternalNote_1') ||
+        document.getElementById('pageBeanitemMddnxphysicalItemTablepublicNote')) {
+      return 'NOTIZEN';
+    }
+
+    return 'ALLGEMEIN';
+  }
+
+  /**
+   * Checks whether the Notizen tab is currently active and rendered
+   */
+  static isNotizenTabActive() {
+    return this.detectCurrentEditorTab() === 'NOTIZEN';
+  }
+
+  /**
+   * Checks whether the Notizen tab is ready with its inputs actually present in the DOM
+   */
+  static isNotizenTabReady() {
+    return this.isNotizenTabActive();
+  }
+
+  /**
+   * Checks whether the Allgemein tab is currently active and rendered
+   */
+  static isAllgemeinTabActive() {
+    return this.detectCurrentEditorTab() === 'ALLGEMEIN';
+  }
+
+  /**
+   * Checks whether the Allgemein tab is ready with target inputs actually present in the DOM
+   */
+  static isAllgemeinTabReady() {
+    const num = this.getInventarnummerInput();
+    const date = this.getInventarisierungsdatumInput();
+    const sig = this.getExemplarsignaturInput();
+    return !!(num || date || sig);
+  }
+
+  /**
+   * Checks whether the specified tab is currently active/selected
+   */
+  static isTabActive(tabName) {
+    if (/Notizen/i.test(tabName)) return this.isNotizenTabActive();
+    if (/Allgemein/i.test(tabName)) return this.isAllgemeinTabActive();
+    return false;
   }
 
   /**
@@ -66,67 +171,77 @@ class AlmaSelectors {
   }
 
   /**
-   * Inventarnummer input field
+   * Inventarnummer input field (Excludes summary card at top of page)
    */
   static getInventarnummerInput() {
-    // 1. Direct label or text heuristic
-    return AlmaDomUtils.findInputByLabel(/Inventarnummer/i);
+    // 1. Direct Alma ID in item_general.xml
+    const byId = document.getElementById('pageBeanitemMddnxphysicalItemTableinventoryNumber') ||
+                 document.querySelector('input[name="pageBean.itemMd.dnx.physicalItemTable.inventoryNumber"]') ||
+                 document.querySelector('input[name*="inventoryNumber" i]');
+    if (byId && !byId.closest('.summarySection, #itemContext')) return byId;
+
+    // 2. Form panel search (strictly outside .summarySection)
+    const formPanels = Array.from(document.querySelectorAll('.innerContainer form, form[name="pageBean"], div.panel:not(.summarySection)'));
+    for (const panel of formPanels) {
+      const inp = AlmaDomUtils.findInputByLabel(/Inventarnummer|^Inventory Number/i, panel);
+      if (inp && !inp.closest('.summarySection, #itemContext')) return inp;
+    }
+
+    return null;
   }
 
   /**
-   * Inventarisierungsdatum input field
+   * Inventarisierungsdatum input field (Excludes summary card at top of page)
    */
   static getInventarisierungsdatumInput() {
-    return AlmaDomUtils.findInputByLabel(/Inventarisierungsdatum/i);
-  }
+    // 1. Direct Alma ID in item_general.xml
+    const byId = document.getElementById('pageBeanitemMddnxphysicalItemTableinventoryDate') ||
+                 document.querySelector('input[name="pageBean.itemMd.dnx.physicalItemTable.inventoryDate"]') ||
+                 document.querySelector('input[name*="inventoryDate" i]') ||
+                 document.querySelector('input[name*="accessionDate" i]');
+    if (byId && !byId.closest('.summarySection, #itemContext')) return byId;
 
-  /**
-   * Exemplarsignatur input field
-   */
-  static getExemplarsignaturInput() {
-    return AlmaDomUtils.findInputByLabel(/Exemplarsignatur$/i) || 
-           AlmaDomUtils.findInputByLabel(/Exemplarsignatur/i);
-  }
+    // 2. Form panel search (strictly outside .summarySection)
+    const formPanels = Array.from(document.querySelectorAll('.innerContainer form, form[name="pageBean"], div.panel:not(.summarySection)'));
+    for (const panel of formPanels) {
+      const inp = AlmaDomUtils.findInputByLabel(/Inventarisierungsdatum|Inventardatum|^Inventory Date/i, panel);
+      if (inp && !inp.closest('.summarySection, #itemContext')) return inp;
+    }
 
-  /**
-   * Returns all input and textarea fields in the currently visible Notizen tab
-   */
-  static getNotizenInputFields() {
-    // Search within active tab panel if exists, or all inputs matching the note sections
-    const noteFieldLabels = [
-      'Öffentliche Notiz',
-      'Benutzungs-Notiz',
-      'Interne Notiz 1',
-      'Interne Notiz 2',
-      'Interne Notiz 3',
-      'Statistiknotiz 1',
-      'Statistiknotiz 2',
-      'Statistiknotiz 3'
-    ];
-
-    const fields = [];
-    for (const label of noteFieldLabels) {
-      const el = AlmaDomUtils.findInputByLabel(label);
-      if (el && !fields.includes(el)) {
-        fields.push({ label, element: el });
+    // 3. Fallback row search: Find input near "Inventarisierungsdatum" label
+    const allLabels = Array.from(document.querySelectorAll('label, span, div.control-label'));
+    for (const lbl of allLabels) {
+      const text = (lbl.textContent || '').trim();
+      if (/Inventarisierungsdatum|Inventardatum/i.test(text) && text.length < 50) {
+        const row = lbl.closest('.row, .col, .form-group, tr') || lbl.parentElement?.parentElement;
+        if (row && !row.closest('.summarySection, #itemContext')) {
+          const input = row.querySelector('input.hasDatepicker, input[type="text"]:not([readonly])');
+          if (input && !input.closest('.summarySection, #itemContext')) return input;
+        }
       }
     }
 
-    // Fallback: If specific labeled fields weren't found, collect all text/textarea inputs in the view
-    if (fields.length === 0) {
-      const visibleInputs = Array.from(document.querySelectorAll(
-        'input[type="text"]:not([readonly]), textarea:not([readonly])'
-      )).filter(el => {
-        // filter out hidden/collapsed elements
-        return el.offsetParent !== null;
-      });
+    return null;
+  }
 
-      visibleInputs.forEach((el, index) => {
-        fields.push({ label: `Field #${index + 1}`, element: el });
-      });
+  /**
+   * Exemplarsignatur input field (Excludes summary card at top of page)
+   */
+  static getExemplarsignaturInput() {
+    // 1. Direct Alma IDs in item_general.xml
+    const byId = document.getElementById('pageBeanitemMddnxphysicalItemTablealternativeCallNumber') ||
+                 document.getElementById('pageBeanitemMddnxphysicalItemTablecallNumber') ||
+                 document.querySelector('input[name*="alternativeCallNumber" i], input[name*="callNumber" i]');
+    if (byId && !byId.closest('.summarySection, #itemContext')) return byId;
+
+    // 2. Form panel search (strictly outside .summarySection)
+    const formPanels = Array.from(document.querySelectorAll('.innerContainer form, form[name="pageBean"], div.panel:not(.summarySection)'));
+    for (const panel of formPanels) {
+      const inp = AlmaDomUtils.findInputByLabel(/Exemplarsignatur|^Call Number/i, panel);
+      if (inp && !inp.closest('.summarySection, #itemContext')) return inp;
     }
 
-    return fields;
+    return null;
   }
 
   // ==========================================

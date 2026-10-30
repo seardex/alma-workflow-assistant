@@ -15,37 +15,64 @@ class AlmaCoreController {
     this.config = await AlmaConfigManager.getConfig();
     this.editorHandler = new AlmaEditorHandler(this.config);
 
-    // 2. Initialize in-page HUD if enabled
+    // 2. Check and resume any pending workflow decision (handles page reloads across tabs)
+    try {
+      await this.editorHandler.checkAndResumeWorkflow();
+    } catch (e) {
+      AlmaLogger.warn('Fehler bei Prüfung auf ausstehende Entscheidungen:', e.message);
+    }
+
+    // 3. Initialize in-page HUD if enabled
     if (this.config.showFloatingHud) {
       this.uiPanel = new AlmaUiPanel(this);
       this.uiPanel.init();
     }
 
-    // 3. Register global keyboard listeners
+    // 4. Register global keyboard listeners
     this.registerHotkeys();
 
-    // 4. Register browser runtime message listeners (for extension popup)
+    // 5. Register browser runtime message listeners (for extension popup)
     this.registerMessageListeners();
 
-    AlmaLogger.success('Alma Workflow Assistant loaded and ready! Press Alt+X to process items.');
+    AlmaLogger.success('Alma Workflow Assistant bereit. Klicke "Zu Notizen wechseln" oder drücke Alt+X.');
   }
 
   registerHotkeys() {
     window.addEventListener('keydown', (e) => {
-      // Hotkey: Alt + X (Process item)
+      const page = AlmaSelectors.detectCurrentPage();
+      const targetTag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag) || (e.target && e.target.isContentEditable);
+
+      // Hotkey: Alt + X (Switch to Notizen when on Allgemein)
       if (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === 'x' || e.key === 'X')) {
         e.preventDefault();
         e.stopPropagation();
-        this.handleProcessItem();
+        if (page === 'PHYSICAL_ITEM_EDITOR') {
+          if (!AlmaSelectors.isNotizenTabActive()) {
+            this.handleGoToNotizen();
+          }
+        }
+        return;
       }
 
       // Hotkey: Alt + E (Open highlighted exemplar editor when on exemplar list)
       if (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === 'e' || e.key === 'E')) {
-        const page = AlmaSelectors.detectCurrentPage();
         if (page === 'EXEMPLAR_LIST') {
           e.preventDefault();
           e.stopPropagation();
           AlmaNavigationHandler.openHighlightedExemplarEditor();
+        }
+        return;
+      }
+
+      // Quick decision keys on Notizen tab: [J] / [Y] for Yes, [N] for No (only when not typing in input)
+      if (!isTyping && page === 'PHYSICAL_ITEM_EDITOR' && AlmaSelectors.isNotizenTabActive() && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === 'j' || e.key === 'J' || e.key === 'y' || e.key === 'Y' || e.key === '1') {
+          e.preventDefault();
+          this.handleRetroDecision(true);
+        } else if (e.key === 'n' || e.key === 'N' || e.key === '2') {
+          e.preventDefault();
+          this.handleRetroDecision(false);
         }
       }
     }, true);
@@ -54,9 +81,14 @@ class AlmaCoreController {
   registerMessageListeners() {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'PROCESS_ITEM') {
-          this.handleProcessItem().then(sendResponse);
+        if (request.action === 'GOTO_NOTIZEN' || request.action === 'PROCESS_ITEM') {
+          this.handleGoToNotizen().then(sendResponse);
           return true; // asynchronous response
+        }
+
+        if (request.action === 'RETRO_DECISION') {
+          this.handleRetroDecision(request.hasRetro).then(sendResponse);
+          return true;
         }
 
         if (request.action === 'SAVE_ITEM') {
@@ -78,9 +110,9 @@ class AlmaCoreController {
     }
   }
 
-  async handleProcessItem() {
+  async handleGoToNotizen() {
     if (this.isProcessing) {
-      AlmaLogger.warn('Automation already in progress, please wait...');
+      AlmaLogger.warn('Aktion läuft bereits, bitte warten...');
       return;
     }
 
@@ -92,13 +124,35 @@ class AlmaCoreController {
 
     this.isProcessing = true;
     try {
-      const result = await this.editorHandler.processCurrentItem();
-      return result;
+      await this.editorHandler.goToNotizenWorkflow();
+      this.uiPanel?.updatePageState();
     } catch (err) {
-      AlmaLogger.error(`Error during processing: ${err.message}`);
+      AlmaLogger.error(`Fehler beim Wechseln zu Notizen: ${err.message}`);
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  async handleRetroDecision(hasRetro) {
+    if (this.isProcessing) {
+      AlmaLogger.warn('Aktion läuft bereits, bitte warten...');
+      return;
+    }
+
+    this.isProcessing = true;
+    try {
+      const result = await this.editorHandler.applyRetroDecision(hasRetro);
+      this.uiPanel?.updatePageState();
+      return result;
+    } catch (err) {
+      AlmaLogger.error(`Fehler bei Anwendung der Entscheidung: ${err.message}`);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  async handleProcessItem() {
+    return this.handleGoToNotizen();
   }
 
   async handleSaveItem() {

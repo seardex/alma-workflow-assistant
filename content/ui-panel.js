@@ -12,6 +12,8 @@ class AlmaUiPanel {
     this.actionArea = null;
     this.infoBox = null;
     this.isCollapsed = false;
+    this.lastCompletedResult = null;
+    this._lastStateKey = null;
   }
 
   init() {
@@ -29,6 +31,13 @@ class AlmaUiPanel {
       this.updatePageStateDebounced();
     });
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Listen for operation completion events to display verification state
+    window.addEventListener('alma-operation-completed', (e) => {
+      this.lastCompletedResult = e.detail;
+      this._lastStateKey = null;
+      this.updatePageState();
+    });
   }
 
   createHudElement() {
@@ -40,7 +49,7 @@ class AlmaUiPanel {
         <div class="alma-hud-header" id="alma-hud-header">
           <div class="alma-hud-title">
             <span>Alma Assistant</span>
-            <span class="alma-hud-title-badge">v1.0</span>
+            <span class="alma-hud-title-badge">v1.2</span>
           </div>
           <div class="alma-hud-header-actions">
             <button class="alma-hud-btn-icon" id="alma-hud-toggle-btn" title="Minimieren / Erweitern">−</button>
@@ -53,23 +62,19 @@ class AlmaUiPanel {
           </div>
 
           <div id="alma-hud-info-box" class="alma-hud-info-box">
-            Drücke <b>Alt+X</b> oder den Button unten, um die Felder automatisch zu prüfen und auszufüllen.
+            Initialisiere...
           </div>
 
           <div id="alma-hud-action-area" style="display: flex; flex-direction: column; gap: 8px;">
             <!-- Contextual action buttons injected here -->
           </div>
 
-          <div class="alma-hud-toggle-row">
-            <span>Manuelles Speichern (Sicherheitsstopp)</span>
-            <label class="alma-switch">
-              <input type="checkbox" id="alma-hud-toggle-save" checked>
-              <span class="alma-slider"></span>
-            </label>
+          <div class="alma-hud-log-header">
+            <span>Protokoll (Größe anpassbar ↘)</span>
+            <button class="alma-hud-btn-text" id="alma-hud-btn-clear-log" title="Protokoll leeren">Leeren</button>
           </div>
-
           <div class="alma-hud-log-box" id="alma-hud-logs">
-            <div class="alma-hud-log-line info">Alma Assistant bereit. Drücke Alt+X.</div>
+            <div class="alma-hud-log-line alma-log-info">Alma Assistant bereit.</div>
           </div>
         </div>
       </div>
@@ -90,7 +95,7 @@ class AlmaUiPanel {
   appendLog(entry) {
     if (!this.logBox) return;
     const line = document.createElement('div');
-    line.className = `alma-hud-log-line ${entry.level}`;
+    line.className = `alma-hud-log-line alma-log-${entry.level}`;
     line.textContent = `[${entry.timestamp}] ${entry.message}`;
     this.logBox.appendChild(line);
     this.logBox.scrollTop = this.logBox.scrollHeight;
@@ -99,6 +104,7 @@ class AlmaUiPanel {
   setupEventListeners() {
     const toggleBtn = this.container.querySelector('#alma-hud-toggle-btn');
     const hudContainer = this.container.querySelector('.alma-hud-container');
+    const clearLogBtn = this.container.querySelector('#alma-hud-btn-clear-log');
 
     toggleBtn.addEventListener('click', () => {
       this.isCollapsed = !this.isCollapsed;
@@ -106,11 +112,10 @@ class AlmaUiPanel {
       toggleBtn.textContent = this.isCollapsed ? '+' : '−';
     });
 
-    const manualSaveCheckbox = this.container.querySelector('#alma-hud-toggle-save');
-    manualSaveCheckbox.addEventListener('change', (e) => {
-      this.controller.config.requireManualSave = e.target.checked;
-      AlmaConfigManager.saveConfig({ requireManualSave: e.target.checked });
-      AlmaLogger.info(`Manuelles Speichern: ${e.target.checked ? 'AKTIVIERT' : 'DEAKTIVIERT'}`);
+    clearLogBtn?.addEventListener('click', () => {
+      if (this.logBox) {
+        this.logBox.innerHTML = '<div class="alma-hud-log-line alma-log-info">Protokoll geleert.</div>';
+      }
     });
   }
 
@@ -155,47 +160,124 @@ class AlmaUiPanel {
 
   updatePageStateDebounced() {
     if (this._updateTimer) clearTimeout(this._updateTimer);
-    this._updateTimer = setTimeout(() => this.updatePageState(), 250);
+    this._updateTimer = setTimeout(() => this.updatePageState(), 200);
   }
 
   updatePageState() {
     const page = AlmaSelectors.detectCurrentPage();
-    if (page === this._lastPage) return;
-    this._lastPage = page;
+    let currentTab = null;
+    if (page === 'PHYSICAL_ITEM_EDITOR') {
+      currentTab = AlmaSelectors.detectCurrentEditorTab();
+    }
+
+    const stateKey = `${page}_${currentTab}_${this.lastCompletedResult ? 'DONE' : 'IDLE'}`;
+    if (stateKey === this._lastStateKey) return;
+    this._lastStateKey = stateKey;
 
     if (page === 'PHYSICAL_ITEM_EDITOR') {
-      this.pageText.textContent = 'Exemplar-Editor';
-      this.statusBadge.className = 'alma-hud-status-badge status-editor';
-      this.statusBadge.textContent = 'Editor aktiv';
-      this.infoBox.innerHTML = 'Im <b>Editor für physische Exemplare</b>.<br>Klicke unten oder drücke <b>Alt+X</b>.';
+      if (currentTab === 'NOTIZEN') {
+        // STATE: Inside Exemplar -> Notizen Tab
+        this.lastCompletedResult = null;
+        this.pageText.textContent = 'Notizen-Prüfung';
+        this.statusBadge.className = 'alma-hud-status-badge alma-status-notes';
+        this.statusBadge.textContent = 'Notizen';
+        this.infoBox.innerHTML = 'Manuelle Prüfung: Bitte überprüfe, ob auf diesem Bildschirm <b>RETRO</b> vermerkt ist.';
 
-      this.actionArea.innerHTML = `
-        <button class="alma-hud-action-btn" id="alma-hud-btn-process">
-          <span>⚡</span> Exemplar bearbeiten (Alt+X)
-        </button>
-        <button class="alma-hud-action-btn btn-save" id="alma-hud-btn-save">
-          <span>💾</span> Jetzt Speichern (Alt+S)
-        </button>
-        <button class="alma-hud-action-btn btn-secondary" id="alma-hud-btn-inspect">
-          <span>🔍</span> Felder überprüfen
-        </button>
-      `;
+        this.actionArea.innerHTML = `
+          <div class="alma-hud-question-box">
+            <div class="alma-hud-question-title">Ist RETRO vorhanden?</div>
+            <div class="alma-hud-decision-grid">
+              <button class="alma-hud-action-btn alma-btn-yes" id="alma-hud-btn-retro-yes">
+                <span>✅</span> Ja (Retro)
+              </button>
+              <button class="alma-hud-action-btn alma-btn-no" id="alma-hud-btn-retro-no">
+                <span>❌</span> Nein (Kein Retro)
+              </button>
+            </div>
+            <div class="alma-hud-hint-text">Taste [J] für Ja &bull; Taste [N] für Nein</div>
+            <button class="alma-hud-btn-text" id="alma-hud-btn-cancel-notes" style="margin-top: 4px; text-align: center; color: #64748b; font-size: 11px;">Zurück zu Allgemein (Alt+1)</button>
+          </div>
+        `;
 
-      this.container.querySelector('#alma-hud-btn-process')?.addEventListener('click', () => {
-        this.controller.handleProcessItem();
-      });
+        this.container.querySelector('#alma-hud-btn-retro-yes')?.addEventListener('click', async () => {
+          const btn = this.container.querySelector('#alma-hud-btn-retro-yes');
+          if (btn) btn.textContent = 'Speichere Ja & gehe zu Allgemein...';
+          await this.controller.handleRetroDecision(true);
+          this._lastStateKey = null;
+          this.updatePageState();
+        });
 
-      this.container.querySelector('#alma-hud-btn-save')?.addEventListener('click', () => {
-        this.controller.handleSaveItem();
-      });
+        this.container.querySelector('#alma-hud-btn-retro-no')?.addEventListener('click', async () => {
+          const btn = this.container.querySelector('#alma-hud-btn-retro-no');
+          if (btn) btn.textContent = 'Speichere Nein & gehe zu Allgemein...';
+          await this.controller.handleRetroDecision(false);
+          this._lastStateKey = null;
+          this.updatePageState();
+        });
 
-      this.container.querySelector('#alma-hud-btn-inspect')?.addEventListener('click', () => {
-        this.inspectAndHighlightFields();
-      });
+        this.container.querySelector('#alma-hud-btn-cancel-notes')?.addEventListener('click', async () => {
+          await this.controller.editorHandler.openAllgemeinTab();
+          this._lastStateKey = null;
+          this.updatePageState();
+        });
+
+      } else {
+        // STATE: Inside Exemplar -> Allgemein Tab (where fields are shown)
+        this.pageText.textContent = 'Exemplar-Editor';
+        this.statusBadge.className = 'alma-hud-status-badge alma-status-editor';
+        this.statusBadge.textContent = 'Allgemein';
+
+        if (this.lastCompletedResult) {
+          // Operation just executed, waiting for manual check & save
+          this.infoBox.innerHTML = 'Felder wurden aktualisiert. <b>Bitte prüfen und speichern.</b>';
+          this.actionArea.innerHTML = `
+            <div class="alma-hud-completion-banner">
+              <b>✅ Operation ausgeführt!</b><br>
+              Datum gesetzt: <b>${this.lastCompletedResult.dateApplied}</b> (${this.lastCompletedResult.hasRetro ? 'Retro: Ja' : 'Retro: Nein'})<br>
+              <span style="font-size: 11px; color: #475569;">Warte auf manuelle Prüfung. Drücke <b>Speichern</b> (Alt+S).</span>
+            </div>
+            <button class="alma-hud-action-btn alma-btn-save" id="alma-hud-btn-save">
+              <span>💾</span> Jetzt Speichern (Alt+S)
+            </button>
+            <button class="alma-hud-action-btn alma-btn-secondary" id="alma-hud-btn-goto-notes">
+              <span>📝</span> Zu Notizen gehen (Alt+3)
+            </button>
+          `;
+
+          this.container.querySelector('#alma-hud-btn-save')?.addEventListener('click', () => {
+            this.controller.handleSaveItem();
+          });
+
+          this.container.querySelector('#alma-hud-btn-goto-notes')?.addEventListener('click', async () => {
+            this.lastCompletedResult = null;
+            await this.controller.handleGoToNotizen();
+            this._lastStateKey = null;
+            this.updatePageState();
+          });
+
+        } else {
+          // Standard state inside Exemplar (Allgemein): Single button takes user to Notizen
+          this.infoBox.innerHTML = 'Im <b>Editor für physische Exemplare</b> (Allgemein).<br>Klicke unten, um Notizen zu prüfen.';
+          this.actionArea.innerHTML = `
+            <button class="alma-hud-action-btn" id="alma-hud-btn-goto-notes">
+              <span>📝</span> Zu Notizen gehen (Alt+3)
+            </button>
+          `;
+
+          this.container.querySelector('#alma-hud-btn-goto-notes')?.addEventListener('click', async () => {
+            const btn = this.container.querySelector('#alma-hud-btn-goto-notes');
+            if (btn) btn.textContent = 'Wechsle zu Notizen (Alt+3)...';
+            await this.controller.handleGoToNotizen();
+            this._lastStateKey = null;
+            this.updatePageState();
+          });
+        }
+      }
 
     } else if (page === 'EXEMPLAR_LIST') {
+      this.lastCompletedResult = null;
       this.pageText.textContent = 'Liste der Exemplare';
-      this.statusBadge.className = 'alma-hud-status-badge status-list';
+      this.statusBadge.className = 'alma-hud-status-badge alma-status-list';
       this.statusBadge.textContent = 'Liste aktiv';
       this.infoBox.innerHTML = 'Finde das markierte Exemplar und öffne den Editor.';
 
@@ -210,8 +292,9 @@ class AlmaUiPanel {
       });
 
     } else if (page === 'SEARCH_RESULTS') {
+      this.lastCompletedResult = null;
       this.pageText.textContent = 'Suchergebnisse';
-      this.statusBadge.className = 'alma-hud-status-badge status-search';
+      this.statusBadge.className = 'alma-hud-status-badge alma-status-search';
       this.statusBadge.textContent = 'Suche aktiv';
       this.infoBox.innerHTML = 'Klicke auf <b>Alle Exemplare</b>, um zur Liste zu gelangen.';
 
@@ -226,37 +309,21 @@ class AlmaUiPanel {
       });
 
     } else {
+      this.lastCompletedResult = null;
       this.pageText.textContent = 'Alma Hauptseite';
-      this.statusBadge.className = 'alma-hud-status-badge status-idle';
+      this.statusBadge.className = 'alma-hud-status-badge alma-status-idle';
       this.statusBadge.textContent = 'Warte...';
       this.infoBox.innerHTML = 'Navigiere zu einem Titel oder Exemplar in Alma.';
       this.actionArea.innerHTML = `
-        <button class="alma-hud-action-btn btn-secondary" id="alma-hud-btn-rescan">
+        <button class="alma-hud-action-btn alma-btn-secondary" id="alma-hud-btn-rescan">
           <span>🔄</span> Seite neu scannen
         </button>
       `;
       this.container.querySelector('#alma-hud-btn-rescan')?.addEventListener('click', () => {
-        this._lastPage = null;
+        this._lastStateKey = null;
         this.updatePageState();
       });
     }
-  }
-
-  inspectAndHighlightFields() {
-    const invNr = AlmaSelectors.getInventarnummerInput();
-    const invDat = AlmaSelectors.getInventarisierungsdatumInput();
-    const exSig = AlmaSelectors.getExemplarsignaturInput();
-    const saveBtn = AlmaSelectors.getSaveButton();
-
-    AlmaLogger.info('--- Feldinspektion ---');
-    AlmaLogger.info(`Inventarnummer: ${invNr ? 'GEFUNDEN' : 'NICHT GEFUNDEN'}`);
-    AlmaLogger.info(`Inventarisierungsdatum: ${invDat ? 'GEFUNDEN' : 'NICHT GEFUNDEN'}`);
-    AlmaLogger.info(`Exemplarsignatur: ${exSig ? 'GEFUNDEN' : 'NICHT GEFUNDEN'}`);
-    AlmaLogger.info(`Speichern-Button: ${saveBtn ? 'GEFUNDEN' : 'NICHT GEFUNDEN'}`);
-
-    if (invNr) AlmaDomUtils.highlight(invNr, '#e0f2fe');
-    if (invDat) AlmaDomUtils.highlight(invDat, '#e0f2fe');
-    if (exSig) AlmaDomUtils.highlight(exSig, '#fef9c3');
   }
 }
 

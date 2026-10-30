@@ -22,8 +22,8 @@
     <section class="section-actions">
       <h2 class="section-title">Schnellaktionen</h2>
       <button id="btn-process-item" class="action-btn primary-btn">
-        <span class="btn-icon">⚡</span>
-        <span>Exemplar bearbeiten</span>
+        <span class="btn-icon">📝</span>
+        <span>Zu Notizen wechseln</span>
         <kbd class="shortcut-tag">Alt + X</kbd>
       </button>
 
@@ -41,29 +41,16 @@
     </section>
 
     <section class="section-settings">
-      <h2 class="section-title">Einstellungen & Regeln</h2>
+      <h2 class="section-title">Einstellungen & Datumswerte</h2>
       
       <div class="form-group">
-        <label for="cfg-date-retro" class="form-label">Datum wenn "Retro" gefunden:</label>
+        <label for="cfg-date-retro" class="form-label">Datum wenn "Retro" (Ja):</label>
         <input type="text" id="cfg-date-retro" class="form-input" value="31.12.1984" placeholder="31.12.1984">
       </div>
 
       <div class="form-group">
-        <label for="cfg-date-no-retro" class="form-label">Datum wenn kein "Retro" vorhanden:</label>
+        <label for="cfg-date-no-retro" class="form-label">Datum wenn kein "Retro" (Nein):</label>
         <input type="text" id="cfg-date-no-retro" class="form-input" value="11/11/1999" placeholder="11/11/1999">
-      </div>
-
-      <div class="form-group">
-        <label for="cfg-keyword" class="form-label">Suchbegriff in Notizen:</label>
-        <input type="text" id="cfg-keyword" class="form-input" value="retro" placeholder="retro">
-      </div>
-
-      <div class="checkbox-row">
-        <label class="checkbox-label">
-          <input type="checkbox" id="cfg-manual-save" checked>
-          <span class="checkbox-custom"></span>
-          <span><b>Sicherheits-Stopp:</b> Erst nach manueller Prüfung speichern</span>
-        </label>
       </div>
 
       <div class="checkbox-row">

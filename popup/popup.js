@@ -4,8 +4,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const dateRetroInput = document.getElementById('cfg-date-retro');
   const dateNoRetroInput = document.getElementById('cfg-date-no-retro');
-  const keywordInput = document.getElementById('cfg-keyword');
-  const manualSaveCheckbox = document.getElementById('cfg-manual-save');
   const showHudCheckbox = document.getElementById('cfg-show-hud');
   const btnSaveSettings = document.getElementById('btn-save-settings');
   const saveStatus = document.getElementById('save-status');
@@ -18,8 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const config = await AlmaConfigManager.getConfig();
   dateRetroInput.value = config.dateRetro;
   dateNoRetroInput.value = config.dateNoRetro;
-  keywordInput.value = config.searchKeyword;
-  manualSaveCheckbox.checked = config.requireManualSave;
   showHudCheckbox.checked = config.showFloatingHud;
 
   // Send message to active Alma tab
@@ -54,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Quick action buttons
   btnProcess.addEventListener('click', () => {
-    sendTabMessage('PROCESS_ITEM');
+    sendTabMessage('GOTO_NOTIZEN');
     window.close();
   });
 
@@ -73,8 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const updated = {
       dateRetro: dateRetroInput.value.trim() || '31.12.1984',
       dateNoRetro: dateNoRetroInput.value.trim() || '11/11/1999',
-      searchKeyword: keywordInput.value.trim() || 'retro',
-      requireManualSave: manualSaveCheckbox.checked,
       showFloatingHud: showHudCheckbox.checked
     };
 

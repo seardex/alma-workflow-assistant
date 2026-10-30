@@ -13,31 +13,34 @@ The extension interacts with Ex Libris Alma's single-page application (SPA) DOM 
 ### Automation Pipeline
 
 ```
-[Trigger: Alt + X or HUD Action]
+[In "Allgemein": Single Button "Zu Notizen wechseln" or Alt + X]
                  │
                  ▼
 1. Navigation to "Notizen" Tab (Alt + 3)
                  │
                  ▼
-2. Audit Notes for Keyword ("retro", case-insensitive)
-   - Scans "Fachliche Notizen" (Öffentliche Notiz, Benutzungs-Notiz)
-   - Scans "Interne Notizen" (Interne Notiz 1–3)
-   - Scans "Statistiknotizen" (Statistiknotiz 1–3)
+2. Manual Visual Audit & Prompt:
+   - User reviews screen for "RETRO"
+   - Prompt: "Ist RETRO auf dieser Seite vermerkt?"
+   - User answers: [Ja (Retro)] / [Nein (Kein Retro)] (or Keys: J / N)
                  │
                  ▼
-3. Return to "Allgemein" Tab (Alt + 1)
+3. Immediate Return to "Allgemein" Tab (Alt + 1)
                  │
                  ▼
 4. Conditional Field Transformation:
-   ├── Existing Inventory Data Check (Inventarnummer or Inventarisierungsdatum != empty):
-   │     └── Clear "Exemplarsignatur"
+   ├── Existing Inventory Data Check (Inventarnummer already populated):
+   │     ├── Clear "Exemplarsignatur"
+   │     └── Assign "Inventarisierungsdatum":
+   │           • Retro "Ja"   ──► 31.12.1984
+   │           • Retro "Nein" ──► 11/11/1999
    │
    └── Empty Inventory Data (Standard Migration):
          ├── Cut "Exemplarsignatur" ──► Paste into "Inventarnummer"
          ├── Clear "Exemplarsignatur"
          └── Assign "Inventarisierungsdatum":
-               • Keyword detected   ──► 31.12.1984
-               • Keyword absent     ──► 11/11/1999
+               • Retro "Ja"   ──► 31.12.1984
+               • Retro "Nein" ──► 11/11/1999
                  │
                  ▼
 5. Visual Verification State:
@@ -45,9 +48,9 @@ The extension interacts with Ex Libris Alma's single-page application (SPA) DOM 
    - Operation log written to HUD and console.
                  │
                  ▼
-6. Manual Confirmation Gate (Default Policy):
+6. Manual Confirmation Gate (Safe Review):
    - Execution pauses. No automatic persistence.
-   - User reviews values and dispatches Alt + S ("Speichern") to commit.
+   - User inspects fields and dispatches Alt + S ("Speichern") to commit.
 ```
 
 ---
@@ -67,7 +70,9 @@ The extension interacts with Ex Libris Alma's single-page application (SPA) DOM 
 
 | Shortcut | Context | Description |
 | :--- | :--- | :--- |
-| `Alt + X` | Physical Item Editor (*Editor für physische Exemplare*) | Executes full inspection and field transformation |
+| `Alt + X` | Physical Item Editor (*Allgemein*) | Switches directly to the "Notizen" tab |
+| `J` / `Y` / `1` | Physical Item Editor (*Notizen*) | Answers "Ja" (Retro vorhanden) -> returns to Allgemein & applies 31.12.1984 |
+| `N` / `2` | Physical Item Editor (*Notizen*) | Answers "Nein" (Kein Retro) -> returns to Allgemein & applies 11/11/1999 |
 | `Alt + S` | Physical Item Editor (*Editor für physische Exemplare*) | Native Alma shortcut to save and commit record |
 | `Alt + E` | Exemplar List (*Liste der Exemplare*) | Opens the action menu (`...`) and selects *Bearbeiten* on the active item |
 
@@ -129,7 +134,7 @@ Settings can be customized directly via the extension action popup:
 
 - `dateRetro`: Default `31.12.1984` (assigned when the audit keyword is found).
 - `dateNoRetro`: Default `11/11/1999` (assigned when no audit keyword is found).
-- `searchKeyword`: Default `retro` (case-insensitive substring match).
+- `searchKeyword`: Default `retro` (case-insensitive match supporting all variations like `*RETRO*`, `RETRO`, `*retro*`, `* RETRO *`, etc.).
 - `requireManualSave`: Default `true` (enforces manual review before dispatching save).
 - `showFloatingHud`: Default `true` (renders the in-page floating toolbar).
 
